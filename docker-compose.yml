@@ -1,0 +1,33 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: threatmapper
+      POSTGRES_USER: threatmapper
+      POSTGRES_PASSWORD: threatmapper
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U threatmapper -d threatmapper"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  api:
+    build: ./apps/api
+    environment:
+      DATABASE_URL: postgresql+psycopg://threatmapper:threatmapper@postgres:5432/threatmapper
+      CORS_ORIGINS: http://localhost:5173
+      MONITORED_WORKSPACE: /workspace
+      MONITORED_RUN_ID: local-agent-live
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports: ["8000:8000"]
+    volumes:
+      - ./:/workspace:ro
+  dashboard:
+    build: ./apps/dashboard
+    depends_on: [api]
+    ports: ["5173:80"]
+volumes:
+  postgres_data:
